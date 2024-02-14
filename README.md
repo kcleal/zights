@@ -5,6 +5,8 @@ Import htslib as a module using the zig package manager.
  
 Uses `zig cc` to compile hstlib and makes it available for use with the zig package manager
 
+Note this is a work in progress!
+
 Usage
 -----
 
