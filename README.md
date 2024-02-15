@@ -42,7 +42,7 @@ Add this to the dependencies in your `build.zig.zon` file:
 
 ```zig
 .zights = .{
-    .url = "https://github.com/kcleal/zights",
+    .url = "https://github.com/kcleal/zights/archive/refs/tags/v0.0.1a.tar.gz",
     .hash = "1220bdf5b2bc887e2523381ccb95db034651623aae4aae7c680d52215dbe6e52fa58",
 },
 ```
