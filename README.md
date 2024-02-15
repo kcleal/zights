@@ -37,7 +37,7 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(exe);
 }
 ```
-Note, zights currently needs tp exists as a local package.
+Note, zights currently needs to exists as a local package.
 Add this to the dependencies in your `build.zig.zon` file:
 
 ```zig
