@@ -1,11 +1,17 @@
-
 const std = @import("std");
+const builtin = @import("builtin");
 
 
 pub fn generateHeaders(b: *std.Build, build_path: *[]const u8) void {
     var buf: [std.fs.MAX_PATH_BYTES]u8 = undefined;
     std.mem.copyForwards(u8, buf[0..], build_path.*);
     std.debug.print("Saving headers in {s}\n", .{buf[0..build_path.len]});
+
+    const popcnt = if (std.Target.x86.featureSetHas(builtin.cpu.features, .popcnt)) "1" else "0";
+    const sse4 = if (std.Target.x86.featureSetHas(builtin.cpu.features, .sse4_2)) "1" else "0";
+    const ssse3 = if (std.Target.x86.featureSetHas(builtin.cpu.features, .ssse3)) "1" else "0";
+    const avx2 = if (std.Target.x86.featureSetHas(builtin.cpu.features, .avx2)) "1" else "0";
+    const avx512 = if (std.Target.x86.featureSetHas(builtin.cpu.features, .avx512f)) "1" else "0";
 
     //config.h
     var hdr_path: []const u8 = "/config.h";
@@ -22,13 +28,13 @@ pub fn generateHeaders(b: *std.Build, build_path: *[]const u8) void {
     \\#endif
     \\#define HAVE_DRAND48 1
     \\#define HAVE_LIBCURL 1
-    \\#define HAVE_POPCNT 1
-    \\#define HAVE_SSE4_1 1
-    \\#define HAVE_SSSE3 1
-    \\#define HAVE_AVX2 1
-    \\#define HAVE_AVX512 1
-    \\#define UBSAN 1
-    , .{}) catch unreachable;
+    \\#define HAVE_POPCNT {s}
+    \\#define HAVE_SSE4_1 {s}
+    \\#define HAVE_SSSE3 {s}
+    \\#define HAVE_AVX2 {s}
+    \\#define HAVE_AVX512 {s}
+    \\#define UBSAN 0
+    , .{popcnt, sse4, ssse3, avx2, avx512}) catch unreachable;
 
     //config_vars.h
     hdr_path = "/config_vars.h";
@@ -72,6 +78,67 @@ pub fn build(b: *std.Build) void {
     var cflags = std.ArrayList([]const u8).init(arena);
     defer cflags.deinit();
 
+    // First build libdeflate
+    //-----------------------
+    // const libdeflate = b.addStaticLibrary(.{
+    //     .name = "deflate",
+    //     .target = target,
+    //     .optimize = optimize,
+    // });
+    //
+    //
+    // cflags.append("-O2") catch unreachable;
+    // cflags.append("-DNDEBUG") catch unreachable;
+    // cflags.append("-Wall") catch unreachable;
+    // cflags.append("-Wdeclaration-after-statement") catch unreachable;
+    // cflags.append("-Wimplicit-fallthrough") catch unreachable;
+    // cflags.append("-Wmissing-field-initializers") catch unreachable;
+    // cflags.append("-Wmissing-prototypes") catch unreachable;
+    // cflags.append("-Wpedantic") catch unreachable;
+    // cflags.append("-Wshadow") catch unreachable;
+    // cflags.append("-Wstrict-prototypes") catch unreachable;
+    // cflags.append("-Wundef") catch unreachable;
+    // cflags.append("-Wvla") catch unreachable;
+    //
+    // const libdeflate_src_files = &[_][]const u8{
+    //     "libdeflate/lib/deflate_compress.c",
+    //     "libdeflate/lib/deflate_decompress.c",
+    //     "libdeflate/lib/adler32.c",
+    //     "libdeflate/lib/zlib_compress.c",
+    //     "libdeflate/lib/zlib_decompress.c",
+    //     "libdeflate/lib/crc32.c",
+    //     "libdeflate/lib/gzip_compress.c",
+    //     "libdeflate/lib/gzip_decompress.c",
+    //     "libdeflate/lib/utils.c",
+    // };
+    // std.debug.print("YO\n", .{});
+    // if (builtin.zig_backend == .stage2_x86) {
+    //     std.debug.print("YOO\n", .{});
+    // } else if (builtin.zig_backend == .stage2_aarch64) {
+    //     std.debug.print("YOO2\n", .{});
+    // }
+    //
+    // for (libdeflate_src_files) |file| {
+    //     libdeflate.addCSourceFile(.{
+    //     .file = .{.path = file},
+    //     .flags = cflags.items,
+    //     });
+    // }
+    //
+    // libdeflate.addIncludePath(.{ .path = "libdeflate" });
+    // libdeflate.addIncludePath(.{ .path = "libdeflate/lib" });
+    // libdeflate.addIncludePath(.{ .path = "libdeflate/lib/arm" });
+    // libdeflate.addIncludePath(.{ .path = "libdeflate/lib/x86" });
+    //
+    //
+    // libdeflate.linkLibC();
+
+    // _ = libdeflate;
+
+    // Now build htslib
+    //-----------------
+
+    cflags.clearAndFree();
     cflags.append("-g") catch unreachable;
     cflags.append("-Wall") catch unreachable;
     cflags.append("-O2") catch unreachable;
@@ -79,9 +146,8 @@ pub fn build(b: *std.Build) void {
     cflags.append("-fpic") catch unreachable;
     cflags.append("-D_XOPEN_SOURCE=700") catch unreachable;  // Needed? Maybe 600?
 
-    // Platform specific build options
+    // Platform specific build options. These dont seem to do anything at the moment?
     const target_os = target.query.os_tag;
-
     if (target_os == .macos) {
         std.debug.print("Building for macOS\n", .{});
         cflags.append("-dynamiclib") catch unreachable;
@@ -183,7 +249,6 @@ pub fn build(b: *std.Build) void {
     htslib.linkSystemLibrary("lzma");
     htslib.linkSystemLibrary("curl");
     htslib.linkSystemLibrary("pthread");
-
 
     b.default_step.dependOn(&htslib.step);
     b.installArtifact(htslib);

@@ -1,17 +1,35 @@
 zights
 ======
 
-Import htslib as a module using the zig package manager.
+Import htslib as a module using the zig package manager (v0.12.0-dev).
  
-Uses `zig cc` to compile hstlib and makes it available for use with the zig package manager
+Uses `zig cc` to compile hstlib and makes it available for use with the zig package manager.
 
-Note this is a work in progress!
+No make or configure is needed. System requirements include libraries:
+
+    z, m, bz2, lzma, curl, pthread
+
 
 Usage
 -----
 
-Let's assume you are building a program called `example`.
-To compile and import hstlib, your `build.zig` file could look like:
+Use htslib in zig by importing as a c-library. For example `main.zig` could contain:
+
+```zig
+const hts = @cImport({
+    @cInclude("hts.h");
+    @cInclude("sam.h");
+});
+
+
+pub fn main() void {
+    const f: *hts.htsFile = hts.hts_open("blah.bam", "r").?;
+    _ = f;
+}
+```
+
+
+Let's assume the above program is called `example`. Your `build.zig` is simply:
 
 ```zig
 pub fn build(b: *std.Build) void {
@@ -37,30 +55,12 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(exe);
 }
 ```
-Note, zights currently needs to exists as a local package.
-Add this to the dependencies in your `build.zig.zon` file:
+
+Also, don't forget to add this to the dependencies in your `build.zig.zon` file:
 
 ```zig
 .zights = .{
-    .path = "../zights",
-    // This will be supported soon ->
-    //.url = "https://github.com/kcleal/zights/archive/refs/tags/v0.0.1a.tar.gz",
-    //.hash = "1220bdf5b2bc887e2523381ccb95db034651623aae4aae7c680d52215dbe6e52fa58",
+    .url = "https://github.com/kcleal/zights/archive/refs/tags/v0.0.1.tar.gz",
+    .hash = "1220f83de9a732d5aa6868df0c5a7ad0b9c49ff34d89e582033401aa218623eeb50a",
 },
-```
-
-
-You can then use htslib in zig, for example `main.zig` could contain:
-
-```zig
-const hts = @cImport({
-    @cInclude("hts.h");
-    @cInclude("sam.h");
-});
-
-
-pub fn main() void {
-    const f: *hts.htsFile = hts.hts_open("blah.bam", "r").?;
-    _ = f;
-}
 ```
