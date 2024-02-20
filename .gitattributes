@@ -1,1 +1,2 @@
-htslib/* linguist-vendored
+* linguist-vendored
+*.zig* linguist-vendored=false
