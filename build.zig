@@ -78,73 +78,10 @@ pub fn build(b: *std.Build) void {
     var cflags = std.ArrayList([]const u8).init(arena);
     defer cflags.deinit();
 
-    // First build libdeflate
-    //-----------------------
-    // const libdeflate = b.addStaticLibrary(.{
-    //     .name = "deflate",
-    //     .target = target,
-    //     .optimize = optimize,
-    // });
-    //
-    //
-    // cflags.append("-O2") catch unreachable;
-    // cflags.append("-DNDEBUG") catch unreachable;
-    // cflags.append("-Wall") catch unreachable;
-    // cflags.append("-Wdeclaration-after-statement") catch unreachable;
-    // cflags.append("-Wimplicit-fallthrough") catch unreachable;
-    // cflags.append("-Wmissing-field-initializers") catch unreachable;
-    // cflags.append("-Wmissing-prototypes") catch unreachable;
-    // cflags.append("-Wpedantic") catch unreachable;
-    // cflags.append("-Wshadow") catch unreachable;
-    // cflags.append("-Wstrict-prototypes") catch unreachable;
-    // cflags.append("-Wundef") catch unreachable;
-    // cflags.append("-Wvla") catch unreachable;
-    //
-    // const libdeflate_src_files = &[_][]const u8{
-    //     "libdeflate/lib/deflate_compress.c",
-    //     "libdeflate/lib/deflate_decompress.c",
-    //     "libdeflate/lib/adler32.c",
-    //     "libdeflate/lib/zlib_compress.c",
-    //     "libdeflate/lib/zlib_decompress.c",
-    //     "libdeflate/lib/crc32.c",
-    //     "libdeflate/lib/gzip_compress.c",
-    //     "libdeflate/lib/gzip_decompress.c",
-    //     "libdeflate/lib/utils.c",
-    // };
-    // std.debug.print("YO\n", .{});
-    // if (builtin.zig_backend == .stage2_x86) {
-    //     std.debug.print("YOO\n", .{});
-    // } else if (builtin.zig_backend == .stage2_aarch64) {
-    //     std.debug.print("YOO2\n", .{});
-    // }
-    //
-    // for (libdeflate_src_files) |file| {
-    //     libdeflate.addCSourceFile(.{
-    //     .file = .{.path = file},
-    //     .flags = cflags.items,
-    //     });
-    // }
-    //
-    // libdeflate.addIncludePath(.{ .path = "libdeflate" });
-    // libdeflate.addIncludePath(.{ .path = "libdeflate/lib" });
-    // libdeflate.addIncludePath(.{ .path = "libdeflate/lib/arm" });
-    // libdeflate.addIncludePath(.{ .path = "libdeflate/lib/x86" });
-    //
-    //
-    // libdeflate.linkLibC();
+    cflags.appendSlice(&.{
+        "-g", "-Wall", "-O2", "-fvisibility=hidden", "-fpic", "-D_XOPEN_SOURCE=700"
+    }) catch unreachable;
 
-    // _ = libdeflate;
-
-    // Now build htslib
-    //-----------------
-
-    cflags.clearAndFree();
-    cflags.append("-g") catch unreachable;
-    cflags.append("-Wall") catch unreachable;
-    cflags.append("-O2") catch unreachable;
-    cflags.append("-fvisibility=hidden") catch unreachable;
-    cflags.append("-fpic") catch unreachable;
-    cflags.append("-D_XOPEN_SOURCE=700") catch unreachable;  // Needed? Maybe 600?
 
     // Platform specific build options. These dont seem to do anything at the moment?
     const target_os = target.query.os_tag;
@@ -160,8 +97,8 @@ pub fn build(b: *std.Build) void {
         cflags.append(soname) catch unreachable;
     }
 
-    // const htslib = b.addStaticLibrary(.{
-    const htslib = b.addSharedLibrary(.{
+    const htslib = b.addStaticLibrary(.{
+    // const htslib = b.addSharedLibrary(.{
         .name = "hts",
         .target = target,
         .optimize = optimize,
@@ -243,21 +180,14 @@ pub fn build(b: *std.Build) void {
 
     htslib.linkLibC();
 
-    htslib.linkSystemLibrary("z");
-    htslib.linkSystemLibrary("m");
+    const libz_dep = b.dependency("zlib", .{.target = target, .optimize = optimize});
+    htslib.linkLibrary(libz_dep.artifact("z"));
+
     htslib.linkSystemLibrary("bz2");
     htslib.linkSystemLibrary("lzma");
     htslib.linkSystemLibrary("curl");
-    htslib.linkSystemLibrary("pthread");
 
     b.default_step.dependOn(&htslib.step);
     b.installArtifact(htslib);
-
-    const zights = b.addModule("zights", .{ .root_source_file = .{ .path = "src/zights.zig" } });
-
-    zights.addIncludePath(.{ .path = "htslib" });
-    zights.addIncludePath(.{ .path = "htslib/htslib" });
-    zights.addIncludePath(.{ .path = "htslib/cram" });
-    zights.linkLibrary(htslib);
 
 }
